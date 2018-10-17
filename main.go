@@ -8,10 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	httpstat "github.com/tcnksm/go-httpstat"
 )
+
+var wg sync.WaitGroup
 
 // struct T
 
@@ -48,7 +51,6 @@ func doRequest(url, body, method string) httpstat.Result {
 	// end := time.Now()
 
 	return result
-	// rs, err := http.Post(url, "body/type", bytes.NewBuffer([]byte(body)))
 }
 
 func main() {
@@ -72,24 +74,30 @@ func main() {
 	results := make(chan httpstat.Result, *wo**wl)
 
 	for w := 1; w <= *wo; w++ {
+		wg.Add(1)
 		go worker(w, *wl, *url, *body, method, results)
 	}
 
 	var avgDNS, avgTCP, avgTLS, avgServ, avgTransfer float64
 	var amountRecieved float64
-	for result := range results {
-		avgDNS += float64(result.DNSLookup / time.Millisecond)
-		avgTCP += float64(result.TCPConnection / time.Millisecond)
-		avgTLS += float64(result.TLSHandshake / time.Millisecond)
-		avgServ += float64(result.ServerProcessing / time.Millisecond)
-		avgTransfer += float64(result.ServerProcessing / time.Millisecond)
-		amountRecieved++
 
+	wg.Wait()
+	for i := 0; i < *wo**wl; i++ {
+		select {
+		case result := <-results:
+			avgDNS += float64(result.DNSLookup / time.Millisecond)
+			avgTCP += float64(result.TCPConnection / time.Millisecond)
+			avgTLS += float64(result.TLSHandshake / time.Millisecond)
+			avgServ += float64(result.ServerProcessing / time.Millisecond)
+			avgTransfer += float64(result.ServerProcessing / time.Millisecond)
+			amountRecieved++
+		default:
+			log.Println("Test payload failed")
+		}
 	}
 	log.Printf("Average DNS lookup: %f ms", avgDNS/amountRecieved)
 	log.Printf("Average TCP connection: %f ms", avgTCP/amountRecieved)
 	log.Printf("Average TLS handshake: %f ms", avgTLS/amountRecieved)
 	log.Printf("Average Server processing: %f ms", avgServ/amountRecieved)
 	log.Printf("Average Content transfer: %f ms", avgTransfer/amountRecieved)
-
 }
