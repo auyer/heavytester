@@ -16,13 +16,12 @@ import (
 
 var wg sync.WaitGroup
 
-// struct T
-
 func worker(id, wl int, url, body, method string, results chan<- httpstat.Result) {
+	defer wg.Done()
 	for w := 1; w <= wl; w++ {
-		fmt.Println("worker", id, "started  job", w)
+		fmt.Printf("\033[2K\r Worker %d started job %d", id, w)
 		result := doRequest(url, body, method)
-		fmt.Println("worker", id, "finished job", w)
+		fmt.Printf("\033[2K\r Worker %d finifhed job %d", id, w)
 		results <- result
 	}
 }
@@ -70,7 +69,6 @@ func main() {
 		method = "POST"
 	}
 
-	// jobs := make(chan string, 100)
 	results := make(chan httpstat.Result, *wo**wl)
 
 	for w := 1; w <= *wo; w++ {
