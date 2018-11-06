@@ -57,7 +57,7 @@ func main() {
 	url := flag.String("url", "", "url to deliver payload to")
 	body := flag.String("body", "", "Body to be delivered")
 	get := flag.Bool("get", false, "use get request. Default = False")
-	wo := flag.Int("wo", 1, "Worker Count: amount of workers making simultaneos requests")
+	wo := flag.Int("wo", 10, "Worker Count: amount of workers making simultaneos requests")
 	wl := flag.Int("wl", 10, "Worker Load: amount of requests executed per worker")
 	interval := flag.Int("interval", 0, "Interval in seconds between each iteration for each worker")
 
@@ -72,7 +72,7 @@ func main() {
 	}
 
 	results := make(chan httpstat.Result, *wo**wl)
-
+	ts := time.Now()
 	for w := 1; w <= *wo; w++ {
 		wg.Add(1)
 		go worker(w, *wl, *interval, *url, *body, method, results)
@@ -82,6 +82,7 @@ func main() {
 	var amountRecieved float64
 
 	wg.Wait()
+	tt := time.Since(ts) //ts - time.Now().
 	for i := 0; i < *wo**wl; i++ {
 		select {
 		case result := <-results:
@@ -104,4 +105,5 @@ func main() {
 	log.Printf("Average TLS handshake: %f ms", avgTLS/amountRecieved)
 	log.Printf("Average Server processing: %f ms", avgServ/amountRecieved)
 	log.Printf("Average Content transfer: %f ms", avgTransfer/amountRecieved)
+	log.Printf("Total test duration: %f ms", float64(tt/time.Microsecond))
 }
